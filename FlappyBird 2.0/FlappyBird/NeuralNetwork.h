@@ -14,21 +14,24 @@ constexpr auto OUTPUT_LAYER = NUM_LAYERS - 1;
 class NeuralNetwork
 {
 private:
+	unsigned int layerSizes[NUM_LAYERS]{0};
+	float* valuesByLayer[NUM_LAYERS]{nullptr};
+	float* weightsByLayer[NUM_LAYERS - 1]{nullptr};
+	float* offsetsByLayer[NUM_LAYERS]{nullptr};
 
-	unsigned int layerSizes		  [NUM_LAYERS];
-	float* valuesByLayer  [NUM_LAYERS];
-	float* weightsByLayer [NUM_LAYERS-1];
-	float* offsetsByLayer [NUM_LAYERS];
-
+	void AllocateLayers();
 	NeuralNetwork();
+	NeuralNetwork(const NeuralNetwork& other);
 	~NeuralNetwork();
 
-	float Sigmoid(float value);
-	void SetInputNeuronValue(unsigned int neuronIndex, float value);
-	float GetOutputNeuronValue(unsigned int neuronIndex);
-	void Process();
-	void OptimisedProcess();
 
+	static float* AllocArray(const size_t numElements);
+	static void FreeArray(float* arr);
+	static float Sigmoid(const float value);
 
+public:
+	void SetInputNeuronValue(unsigned int neuronIndex, float value) const;
+	float GetOutputNeuronValue(unsigned int neuronIndex) const;
+	void Process() const;
+	void OptimisedProcess() const;
 };
-

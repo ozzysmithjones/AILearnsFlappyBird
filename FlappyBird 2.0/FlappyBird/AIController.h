@@ -14,7 +14,6 @@ public:
 	void update();
 	bool shouldFlap(); // note when this is called, it resets the flap state
 
-public:
 
 private:
 	float distanceToFloor(Land* land, Bird* bird);
@@ -23,9 +22,6 @@ private:
 
 
 private:
-	GameState*	m_pGameState;
-	bool		m_bShouldFlap;
-
-
+	GameState* m_pGameState;
+	bool m_bShouldFlap;
 };
-

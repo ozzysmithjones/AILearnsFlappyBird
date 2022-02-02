@@ -1,79 +1,120 @@
-
 #include <math.h>
+#include <exception>
+#include <stdlib.h>
 #include <immintrin.h>
 #include "NeuralNetwork.h"
 
-NeuralNetwork::NeuralNetwork()
+#include <algorithm>
+
+void NeuralNetwork::AllocateLayers()
 {
-	layerSizes[INPUT_LAYER] = HIDDEN_LAYER_SIZE;
+	layerSizes[INPUT_LAYER] = INPUT_LAYER_SIZE;
 	layerSizes[OUTPUT_LAYER] = OUTPUT_LAYER_SIZE;
 	for (unsigned int i = HIDDEN_LAYER; i < (HIDDEN_LAYER + NUM_HIDDEN_LAYERS); i++)
 	{
 		layerSizes[i] = HIDDEN_LAYER_SIZE;
 	}
 
-	valuesByLayer[INPUT_LAYER] = new float[INPUT_LAYER_SIZE] {0};
-	valuesByLayer[OUTPUT_LAYER] = new float[OUTPUT_LAYER_SIZE] {0};
+	valuesByLayer[INPUT_LAYER] = AllocArray(INPUT_LAYER_SIZE);
+	valuesByLayer[OUTPUT_LAYER] = AllocArray(OUTPUT_LAYER_SIZE);
 	for (unsigned int i = HIDDEN_LAYER; i < (HIDDEN_LAYER + NUM_HIDDEN_LAYERS); i++)
 	{
-		valuesByLayer[i] = new float[HIDDEN_LAYER_SIZE] {0};
+		valuesByLayer[i] = AllocArray(HIDDEN_LAYER_SIZE);
 	}
 
-	weightsByLayer[INPUT_LAYER] = new float[HIDDEN_LAYER_SIZE] {0};
-	for (unsigned int i = HIDDEN_LAYER; i < (HIDDEN_LAYER + NUM_HIDDEN_LAYERS)-1; i++)
+	weightsByLayer[INPUT_LAYER] = AllocArray(HIDDEN_LAYER_SIZE);
+	weightsByLayer[(HIDDEN_LAYER + NUM_HIDDEN_LAYERS) - 1] = AllocArray(OUTPUT_LAYER_SIZE);
+	for (unsigned int i = HIDDEN_LAYER; i < (HIDDEN_LAYER + NUM_HIDDEN_LAYERS) - 1; i++)
 	{
-		weightsByLayer[i] = new float[HIDDEN_LAYER_SIZE] {0};
+		weightsByLayer[i] = AllocArray(HIDDEN_LAYER_SIZE);
 	}
-	weightsByLayer[(HIDDEN_LAYER + NUM_HIDDEN_LAYERS) - 1] = new float[OUTPUT_LAYER_SIZE];
+
 
 	offsetsByLayer[INPUT_LAYER] = nullptr;
-	offsetsByLayer[OUTPUT_LAYER] = new float[OUTPUT_LAYER_SIZE] {0};
+	offsetsByLayer[OUTPUT_LAYER] = AllocArray(OUTPUT_LAYER_SIZE);
 	for (unsigned int i = HIDDEN_LAYER; i < (HIDDEN_LAYER + NUM_HIDDEN_LAYERS); i++)
 	{
-		offsetsByLayer[i] = new float[HIDDEN_LAYER_SIZE] {0};
+		offsetsByLayer[i] = AllocArray(HIDDEN_LAYER_SIZE);
 	}
+}
+
+NeuralNetwork::NeuralNetwork()
+{
+	AllocateLayers();
+}
+
+NeuralNetwork::NeuralNetwork(const NeuralNetwork& other)
+{
+	AllocateLayers();
+
+	for (unsigned int i = INPUT_LAYER; i < OUTPUT_LAYER; i++)
+	{
+		memcpy(valuesByLayer[i], other.valuesByLayer[i], layerSizes[i] * sizeof(float));
+		memcpy(weightsByLayer[i], other.weightsByLayer[i], layerSizes[i + 1] * sizeof(float));
+		memcpy(offsetsByLayer[i], other.offsetsByLayer[i], layerSizes[i] * sizeof(float));
+	}
+
+	memcpy(offsetsByLayer[OUTPUT_LAYER], other.offsetsByLayer[OUTPUT_LAYER], layerSizes[OUTPUT_LAYER] * sizeof(float));
+	memcpy(valuesByLayer[OUTPUT_LAYER], other.valuesByLayer[OUTPUT_LAYER], layerSizes[OUTPUT_LAYER] * sizeof(float));
 }
 
 NeuralNetwork::~NeuralNetwork()
 {
 	for (unsigned int i = 0; i < NUM_LAYERS; i++)
 	{
-		delete[] valuesByLayer[i];
+		FreeArray(valuesByLayer[i]);
 	}
 
 	for (unsigned int i = 1; i < NUM_LAYERS; i++)
 	{
-		delete[] offsetsByLayer[i];
+		FreeArray(offsetsByLayer[i]);
 	}
 
-	for (unsigned int i = 0; i < NUM_LAYERS-1; i++)
+	for (unsigned int i = 0; i < NUM_LAYERS - 1; i++)
 	{
-		delete[] weightsByLayer[i];
+		FreeArray(weightsByLayer[i]);
 	}
 }
 
-float NeuralNetwork::Sigmoid(float value)
+float* NeuralNetwork::AllocArray(const size_t numElements)
 {
-	return 1.0f / (1 + exp(-value));
+	const auto arr = (float*)_aligned_malloc(numElements * sizeof(float), 16);
+
+	if (arr == nullptr)
+	{
+		throw std::bad_alloc();
+	}
+
+	return arr;
 }
 
-void NeuralNetwork::SetInputNeuronValue(unsigned int neuronIndex, float value)
+void NeuralNetwork::FreeArray(float* arr)
+{
+	_aligned_free(arr);
+}
+
+float NeuralNetwork::Sigmoid(const float value)
+{
+	return 1.0f / (1 + expf(-value));
+}
+
+void NeuralNetwork::SetInputNeuronValue(unsigned int neuronIndex, float value) const
 {
 	valuesByLayer[INPUT_LAYER][neuronIndex] = value;
 }
 
-float NeuralNetwork::GetOutputNeuronValue(unsigned int neuronIndex)
+float NeuralNetwork::GetOutputNeuronValue(unsigned int neuronIndex) const
 {
 	return valuesByLayer[OUTPUT_LAYER][neuronIndex];
 }
 
-void NeuralNetwork::Process()
+void NeuralNetwork::Process() const
 {
 	//Set all node values past the Input to zero
 
 	for (unsigned int i = HIDDEN_LAYER; i < NUM_LAYERS; i++)
 	{
-		unsigned int layerSize = layerSizes[i];
+		const unsigned int layerSize = layerSizes[i];
 
 		for (unsigned int nodeIndex = 0; nodeIndex < layerSize; nodeIndex++)
 		{
@@ -88,7 +129,7 @@ void NeuralNetwork::Process()
 		const unsigned int layerSize = layerSizes[i];
 		const unsigned int nextLayerSize = layerSizes[i + 1];
 
-		for (unsigned int nodeIndex = 0; nodeIndex < layerSize; i++)
+		for (unsigned int nodeIndex = 0; nodeIndex < layerSize; nodeIndex++)
 		{
 			for (unsigned int nextNodeIndex = 0; nextNodeIndex < nextLayerSize; nextNodeIndex++)
 			{
@@ -104,9 +145,10 @@ void NeuralNetwork::Process()
 	}
 }
 
-void NeuralNetwork::OptimisedProcess()
+void NeuralNetwork::OptimisedProcess() const
 {
-	static_assert((INPUT_LAYER_SIZE % 4) == 0,  "Input  layer size must be multiple of 4 for vector intrinsics");
+	static_assert(sizeof(float) == 4, "float must be sizeof(4) for correct alignment in vector intrinsics");
+	static_assert((INPUT_LAYER_SIZE % 4) == 0, "Input  layer size must be multiple of 4 for vector intrinsics");
 	static_assert((HIDDEN_LAYER_SIZE % 4) == 0, "Hidden layer size must be multiple of 4 for vector intrinsics");
 	static_assert((OUTPUT_LAYER_SIZE % 4) == 0, "Output layer size must be multiple of 4 for vector intrinsics");
 
@@ -117,7 +159,7 @@ void NeuralNetwork::OptimisedProcess()
 		const unsigned int layerSize = layerSizes[i];
 		for (unsigned int nodeIndex = 0; nodeIndex < layerSize; nodeIndex += 4)
 		{
-			_mm_storeu_ps(valuesByLayer[i] + nodeIndex, zero);
+			_mm_store_ps(valuesByLayer[i] + nodeIndex, zero);
 		}
 	}
 
@@ -126,25 +168,25 @@ void NeuralNetwork::OptimisedProcess()
 		const unsigned int layerSize = layerSizes[i];
 		const unsigned int nextLayerSize = layerSizes[i + 1];
 
-		for (unsigned int nodeIndex = 0; nodeIndex < layerSize; i++)
+		for (unsigned int nodeIndex = 0; nodeIndex < layerSize; nodeIndex++)
 		{
 			const __m128 value = _mm_set1_ps(valuesByLayer[i][nodeIndex]);
 
 			for (unsigned int nextNodeIndex = 0; nextNodeIndex < nextLayerSize; nextNodeIndex += 4)
 			{
 				float* next = valuesByLayer[i + 1] + nextNodeIndex;
-				const __m128 nextValues = _mm_loadu_ps(next);
-				const __m128 nextWeights = _mm_loadu_ps(weightsByLayer[i] + nextNodeIndex);
-				_mm_storeu_ps(next, _mm_add_ps(nextValues, _mm_mul_ps(value,nextWeights)));
+				const __m128 nextValues = _mm_load_ps(next);
+				const __m128 nextWeights = _mm_load_ps(weightsByLayer[i] + nextNodeIndex);
+				_mm_store_ps(next, _mm_add_ps(nextValues, _mm_mul_ps(value, nextWeights)));
 			}
 		}
 
 		for (unsigned int nextNodeIndex = 0; nextNodeIndex < nextLayerSize; nextNodeIndex += 4)
 		{
 			float* next = valuesByLayer[i + 1] + nextNodeIndex;
-			const __m128 nextValues = _mm_loadu_ps(next);
-			const __m128 nextOffsets = _mm_loadu_ps(offsetsByLayer[i + 1] + nextNodeIndex);
-			_mm_storeu_ps(next, _mm_add_ps(nextValues, nextOffsets));
+			const __m128 nextValues = _mm_load_ps(next);
+			const __m128 nextOffsets = _mm_load_ps(offsetsByLayer[i + 1] + nextNodeIndex);
+			_mm_store_ps(next, _mm_add_ps(nextValues, nextOffsets));
 		}
 
 		//sigmoid
