@@ -1,4 +1,5 @@
 #include "AIController.h"
+#include "NeuralNetwork.h"
 
 #include <iostream>
 #include <vector>
@@ -15,7 +16,6 @@ AIController::AIController()
 
 AIController::~AIController()
 {
-
 }
 
 // update - the AI method which determines whether the bird should flap or not. 
@@ -31,16 +31,15 @@ void AIController::update()
 
 	// do some AI stuff, decide whether to flap
 	float fDistanceToFloor = distanceToFloor(land, bird);
-
 	float fDistanceToNearestPipe = distanceToNearestPipes(pipe, bird);
 
-	if (fDistanceToNearestPipe != ERROR_DISTANCE) {
+	if (fDistanceToNearestPipe != ERROR_DISTANCE)
+	{
 		float fDistanceToCentreOfGap = distanceToCentreOfPipeGap(pipe, bird);
 		fDistanceToCentreOfGap = fDistanceToCentreOfGap;
-
-		
 	}
-	
+
+
 	// this means the birdie always flaps. Should only be called when the bird should need to flap. 
 	//m_bShouldFlap = true;
 
@@ -66,10 +65,12 @@ float AIController::distanceToNearestPipes(Pipe* pipe, Bird* bird)
 
 	// get nearest pipes
 	std::vector<sf::Sprite> pipeSprites = pipe->GetSprites();
-	for (unsigned int i = 0; i < pipeSprites.size(); i++) {
+	for (unsigned int i = 0; i < pipeSprites.size(); i++)
+	{
 		sf::Sprite s = pipeSprites.at(i);
 		float fDistance = s.getPosition().x - bird->GetSprite().getPosition().x;
-		if (fDistance > 0 && fDistance < nearest1) {
+		if (fDistance > 0 && fDistance < nearest1)
+		{
 			nearestSprite1 = &(pipeSprites.at(i));
 			nearest1 = fDistance;
 		}
@@ -90,14 +91,17 @@ float AIController::distanceToCentreOfPipeGap(Pipe* pipe, Bird* bird)
 
 	// get nearest pipes
 	std::vector<sf::Sprite> pipeSprites = pipe->GetSprites();
-	for (unsigned int i = 0; i < pipeSprites.size(); i++) {
+	for (unsigned int i = 0; i < pipeSprites.size(); i++)
+	{
 		sf::Sprite s = pipeSprites.at(i);
 		float fDistance = s.getPosition().x - bird->GetSprite().getPosition().x;
-		if (fDistance > 0 && fDistance < nearest1) {
+		if (fDistance > 0 && fDistance < nearest1)
+		{
 			nearestSprite1 = &(pipeSprites.at(i));
 			nearest1 = fDistance;
 		}
-		else if (fDistance > 0 && fDistance < nearest2) {
+		else if (fDistance > 0 && fDistance < nearest2)
+		{
 			nearestSprite2 = &(pipeSprites.at(i));
 			nearest2 = fDistance;
 		}
@@ -110,11 +114,13 @@ float AIController::distanceToCentreOfPipeGap(Pipe* pipe, Bird* bird)
 	sf::Sprite* topSprite = nullptr;
 	sf::Sprite* bottomSprite = nullptr;
 
-	if (nearestSprite1->getPosition().y < nearestSprite2->getPosition().y) {
+	if (nearestSprite1->getPosition().y < nearestSprite2->getPosition().y)
+	{
 		topSprite = nearestSprite1;
 		bottomSprite = nearestSprite2;
 	}
-	else {
+	else
+	{
 		topSprite = nearestSprite2;
 		bottomSprite = nearestSprite1;
 	}
@@ -126,11 +132,10 @@ float AIController::distanceToCentreOfPipeGap(Pipe* pipe, Bird* bird)
 }
 
 // note when this is called, it resets the flap state (don't edit)
-bool AIController::shouldFlap() 
+bool AIController::shouldFlap()
 {
 	bool output = m_bShouldFlap;
 	m_bShouldFlap = false;
 
 	return output;
 }
-

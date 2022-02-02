@@ -57,6 +57,7 @@
     <ClCompile Include="NeuralNetwork.cpp" />
     <ClCompile Include="NeuralNetworkController.cpp" />
     <ClCompile Include="Pipe.cpp" />
+    <ClCompile Include="Random.cpp" />
     <ClCompile Include="SplashState.cpp" />
     <ClCompile Include="StateMachine.cpp" />
   </ItemGroup>
@@ -77,6 +78,7 @@
     <ClInclude Include="NeuralNetwork.h" />
     <ClInclude Include="NeuralNetworkController.h" />
     <ClInclude Include="Pipe.hpp" />
+    <ClInclude Include="Random.h" />
     <ClInclude Include="SplashState.hpp" />
     <ClInclude Include="State.hpp" />
     <ClInclude Include="StateMachine.hpp" />

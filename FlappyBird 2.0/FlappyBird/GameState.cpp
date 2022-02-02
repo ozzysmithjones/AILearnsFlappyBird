@@ -67,6 +67,7 @@ namespace Sonar
 	void GameState::HandleInput()
 	{
 #if PLAY_WITH_AI
+
 		if (GameStates::eGameOver != _gameState)
 		{
 			_gameState = GameStates::ePlaying;
@@ -79,7 +80,8 @@ namespace Sonar
 				bird->Tap();
 				_wingSound.play();
 			}
-			else {
+			else
+			{
 				std::cout << "not tap :(" << std::endl;
 			}
 		}
@@ -163,7 +165,7 @@ namespace Sonar
 
 			if (GameStates::ePlaying == _gameState)
 			{
-				std::vector<sf::Sprite> &scoringSprites = pipe->GetScoringSprites();
+				std::vector<sf::Sprite>& scoringSprites = pipe->GetScoringSprites();
 
 				for (unsigned int i = 0; i < scoringSprites.size(); i++)
 				{
@@ -194,7 +196,7 @@ namespace Sonar
 
 	void GameState::Draw(float dt)
 	{
-		this->_data->window.clear( sf::Color::Red );
+		this->_data->window.clear(sf::Color::Red);
 
 		this->_data->window.draw(this->_background);
 

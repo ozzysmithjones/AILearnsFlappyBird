@@ -2,9 +2,11 @@
 #include <exception>
 #include <stdlib.h>
 #include <immintrin.h>
-#include "NeuralNetwork.h"
-
 #include <algorithm>
+#include "NeuralNetwork.h"
+#include "Random.h"
+
+static Random random(235);
 
 void NeuralNetwork::AllocateLayers()
 {
@@ -29,10 +31,9 @@ void NeuralNetwork::AllocateLayers()
 		weightsByLayer[i] = AllocArray(HIDDEN_LAYER_SIZE);
 	}
 
-
-	offsetsByLayer[INPUT_LAYER] = nullptr;
-	offsetsByLayer[OUTPUT_LAYER] = AllocArray(OUTPUT_LAYER_SIZE);
-	for (unsigned int i = HIDDEN_LAYER; i < (HIDDEN_LAYER + NUM_HIDDEN_LAYERS); i++)
+	offsetsByLayer[INPUT_LAYER] = AllocArray(HIDDEN_LAYER_SIZE);
+	offsetsByLayer[(HIDDEN_LAYER + NUM_HIDDEN_LAYERS) - 1] = AllocArray(OUTPUT_LAYER_SIZE);
+	for (unsigned int i = HIDDEN_LAYER; i < (HIDDEN_LAYER + NUM_HIDDEN_LAYERS) - 1; i++)
 	{
 		offsetsByLayer[i] = AllocArray(HIDDEN_LAYER_SIZE);
 	}
@@ -41,6 +42,25 @@ void NeuralNetwork::AllocateLayers()
 NeuralNetwork::NeuralNetwork()
 {
 	AllocateLayers();
+
+	//Randomize the initial weights and offsets.
+
+	const unsigned int layerSize = layerSizes[INPUT_LAYER];
+	for (unsigned int nodeIndex = 0; nodeIndex < layerSize; nodeIndex++)
+	{
+		valuesByLayer[INPUT_LAYER][nodeIndex] = 0;
+	}
+
+	for (unsigned int i = INPUT_LAYER; i < OUTPUT_LAYER; i++)
+	{
+		const unsigned int nextLayerSize = layerSizes[i + 1];
+
+		for (unsigned int nodeIndex = 0; nodeIndex < nextLayerSize; nodeIndex++)
+		{
+			weightsByLayer[i][nodeIndex] = random.Value();
+			offsetsByLayer[i][nodeIndex] = random.Value();
+		}
+	}
 }
 
 NeuralNetwork::NeuralNetwork(const NeuralNetwork& other)
@@ -51,10 +71,9 @@ NeuralNetwork::NeuralNetwork(const NeuralNetwork& other)
 	{
 		memcpy(valuesByLayer[i], other.valuesByLayer[i], layerSizes[i] * sizeof(float));
 		memcpy(weightsByLayer[i], other.weightsByLayer[i], layerSizes[i + 1] * sizeof(float));
-		memcpy(offsetsByLayer[i], other.offsetsByLayer[i], layerSizes[i] * sizeof(float));
+		memcpy(offsetsByLayer[i], other.offsetsByLayer[i], layerSizes[i + 1] * sizeof(float));
 	}
 
-	memcpy(offsetsByLayer[OUTPUT_LAYER], other.offsetsByLayer[OUTPUT_LAYER], layerSizes[OUTPUT_LAYER] * sizeof(float));
 	memcpy(valuesByLayer[OUTPUT_LAYER], other.valuesByLayer[OUTPUT_LAYER], layerSizes[OUTPUT_LAYER] * sizeof(float));
 }
 
@@ -65,13 +84,9 @@ NeuralNetwork::~NeuralNetwork()
 		FreeArray(valuesByLayer[i]);
 	}
 
-	for (unsigned int i = 1; i < NUM_LAYERS; i++)
+	for (unsigned int i = 1; i < NUM_LAYERS - 1; i++)
 	{
 		FreeArray(offsetsByLayer[i]);
-	}
-
-	for (unsigned int i = 0; i < NUM_LAYERS - 1; i++)
-	{
 		FreeArray(weightsByLayer[i]);
 	}
 }
@@ -96,6 +111,21 @@ void NeuralNetwork::FreeArray(float* arr)
 float NeuralNetwork::Sigmoid(const float value)
 {
 	return 1.0f / (1 + expf(-value));
+}
+
+void NeuralNetwork::Mutate() const
+{
+	const auto layer = random.Range<unsigned int>(0, NUM_LAYERS - 1);
+	const auto nodeIndex = random.Range<unsigned int>(0, layerSizes[layer]);
+
+	if (random.Value() > 0.0f)
+	{
+		weightsByLayer[layer][nodeIndex] = random.Value();
+	}
+	else
+	{
+		offsetsByLayer[layer][nodeIndex] = random.Value();
+	}
 }
 
 void NeuralNetwork::SetInputNeuronValue(unsigned int neuronIndex, float value) const
@@ -140,7 +170,7 @@ void NeuralNetwork::Process() const
 		for (unsigned int nextNodeIndex = 0; nextNodeIndex < nextLayerSize; nextNodeIndex++)
 		{
 			float& val = valuesByLayer[i + 1][nextNodeIndex];
-			val = Sigmoid(offsetsByLayer[i + 1][nextNodeIndex] + val);
+			val = Sigmoid(offsetsByLayer[i][nextNodeIndex] + val);
 		}
 	}
 }
@@ -185,7 +215,7 @@ void NeuralNetwork::OptimisedProcess() const
 		{
 			float* next = valuesByLayer[i + 1] + nextNodeIndex;
 			const __m128 nextValues = _mm_load_ps(next);
-			const __m128 nextOffsets = _mm_load_ps(offsetsByLayer[i + 1] + nextNodeIndex);
+			const __m128 nextOffsets = _mm_load_ps(offsetsByLayer[i] + nextNodeIndex);
 			_mm_store_ps(next, _mm_add_ps(nextValues, nextOffsets));
 		}
 
